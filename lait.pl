@@ -4,7 +4,7 @@
 #Daniel Hui
 #dah124@pitt.edu
 #University of Pittsburgh
-#July 2016
+#March 2017
 ###########################
 
 use strict;
@@ -12,7 +12,7 @@ use warnings;
 
 my $software = lc($ARGV[0]);
 
-print "Please be sure .ped has 6 columns of header and .hap has no columns of header!\n";
+print "Please be sure .ped has 6 columns of header and .hap has two columns of header!\n";
 
 ###################LAMP##################
 if($software eq "lamp"){
@@ -50,7 +50,7 @@ if($software eq "lamp"){
 	open my $SNPS, "+>$path/chr_.pos";
 
 	my %snps;
-	my @alts;
+	my %alts;
 	
 	if ($ARGV[1] eq "3"){
 		open my $FREQ1, "$ARGV[4]" or die "freq1 error";
@@ -64,12 +64,14 @@ if($software eq "lamp"){
 		%snps = &lampfreq($FREQ1, $FREQ2, $FREQ3, $MAP, $OUTFREQ1, $OUTFREQ2, $OUTFREQ3, %snps);
 
 		#get alternate alleles from any frequency file (used pop1)
+		#can choose any since has to be subset anyway
+		#ref and alt alleles are same for each ref pop
 		seek($FREQ1, 0, 0);
 		while(<$FREQ1>){
 			chomp;
 			my @line = split /\s+/;
 	  		if (exists $snps{$line[0]}){
-	    			push(@alts, $line[4]);
+	    			$alts{$snps{$line[0]}} = $line[4];
 			}
 		}
 	}
@@ -85,19 +87,15 @@ if($software eq "lamp"){
 
 	#SNP file
 	#lampsnps()
-	my $lc = 0;
-	my %counts;
 	my %exists;
 	while (<$MAP>){
 		chomp;
      		my @line = split /\s+/;
         	if (exists $snps{$line[1]} && $line[3] ne "0"){
-		if (!exists $exists{$line[1]}){
-			$exists{$line[1]} = $line[1];
-			$counts{$lc} = $lc;
-        		print $SNPS "$line[3]\n";
-		}
-		$lc++;
+			if (!exists $exists{$line[1]}){
+				$exists{$line[1]} = $line[1];
+       		 		print $SNPS "$line[3]\n";
+			}
 		}
 	}
 	print "SNP file done.\n";
@@ -106,24 +104,25 @@ if($software eq "lamp"){
 	#lampgeno()
 	while (<$PED>){
         	my @line = split /\s+/;
+
 		for(my $i = 0; $i < 6; $i++){
 			shift @line;
 		}
-		my $count = 0;
+
         	#alt/variant is 0, reference is 1
-        	for (my $i = 0; $i < @line - 1; $i+=2){
-			if (exists $counts{$i/2}){
-                		if ( ($line[$i] eq $alts[$count]) && ($line[$i+1] eq $alts[$count]) ){
+        	for (my $i = 0; $i < scalar(@line) - 1; $i+=2){
+			my $count = $i/2;
+			if (exists $alts{$count}){
+				if ( ($line[$i] eq $alts{$count}) && ($line[$i+1] eq $alts{$count}) ){
                         		print $GENO "0\t";
-                  		}elsif ( ($line[$i] ne $alts[$count]) && ($line[$i+1] ne $alts[$count]) ) {
+		 		}elsif ( ($line[$i] ne $alts{$count}) && ($line[$i+1] ne $alts{$count}) ) {
                         		print $GENO "2\t";
-                  		}elsif ( ($line[$i] eq $alts[$count]) && ($line[$i+1] ne $alts[$count] )  || ($line[$i] ne $alts[$count]) && ($line[$i+1] eq $alts[$count] )  ) {
+                  		}elsif ( ($line[$i] eq $alts{$count}) && ($line[$i+1] ne $alts{$count} )  || ($line[$i] ne $alts{$count}) && ($line[$i+1] eq $alts{$count} )  ) {
                         		print $GENO "1\t";
                   		}else{
                         		print $GENO "-1\t";
                         	}
 			}
-			$count++;
 		}
 		print $GENO "\n";
 
@@ -154,7 +153,7 @@ elsif($software eq "lampld" || $software eq "lamp-ld"){
             	die;
         }	
 
-		#3way
+	#3way
        	} elsif($ARGV[1] eq "3"){
 	if(@ARGV != 9){
       		print "USAGE:: perl lait.pl <lamp-ld> <3> <map> <ped> <snps>". 
@@ -425,7 +424,7 @@ sub lampfreq{
 		chomp;
 		my @line = split /\s+/;
 		if( exists $freq1{$line[1]} && exists $freq2{$line[1]} && exists $freq3{$line[1]} && $line[3] ne "0") {
-        		$all{$line[1]} = $line[1];
+        		$all{$line[1]} = $.;
 	        }
 	}
 
@@ -494,13 +493,13 @@ sub lampsnps{
 		my @line = split /\s+/;
 
 		if($line[3] ne "0"){
-		if(!exists $snps{$line[3]}){
-        		$snps{$line[3]} = $line[3];
-			$lines{$count} = $count;  
-        		print $SNPS "$line[3]\n"; 
-        	}
+			if(!exists $snps{$line[3]}){
+       		 		$snps{$line[3]} = $line[3];
+				$lines{$count} = $count;  
+        			print $SNPS "$line[3]\n"; 
+        		}
 		}
-	$count++;
+		$count++;
 	}
 
 	print "SNP file done.\n";
@@ -518,6 +517,11 @@ sub lampgeno{
 	my @refarr;
 	while(<$PED>){
 		my @line = split(/\s+/, $_);
+		
+		#remove 6 columns of header info
+		for(my $i = 0; $i < 6; $i++){
+			shift @line;
+		}
 	
 		if($firstline == 1){
 			for(my $i = 0; $i < @line ; $i+=2){
@@ -538,8 +542,8 @@ sub lampgeno{
 				}	
 	  		}
 		}	
-	$firstline = 0;
-	print $INTER0 "\n";
+		$firstline = 0;
+		print $INTER0 "\n";
 	}
 
 	#rm all mono het sites
@@ -662,10 +666,10 @@ sub lampconfig{
 	."# Parameters for the windowing scheme\n#######################################################################\n\n"
 
 	#offset for adjacent windows				      #recombination rate
-	."# The offset of adjacent windows\noffset=0.2\n# Recombination rate\nrecombrate=1e-8\n";
+	."# The offset of adjacent windows\noffset=0.2\n# Recombination rate\nrecombrate=1e-6\n";
 
 	#no. of generations					#alpha
-	if ($POPS == 3) { print $CONFIG "# Number of generations\ngenerations=10\n# Alpha (must sum to one)\nalpha=0.6,0.3,0.1\n\n\n"}
+	if ($POPS == 3) { print $CONFIG "# Number of generations\ngenerations=10\n# Alpha (must sum to one)\nalpha=0.6,0.2,0.2\n\n\n"}
 	else {
 	print $CONFIG "# Number of generations\ngenerations=7\n# Alpha (must sum to one)\nalpha=0.2,0.8\n\n\n"
 	}
@@ -687,7 +691,14 @@ sub ldhap{
 
 	while (<$INHAP>){
 		chomp;
-		my @line = split("", $_);
+
+		my @orig = split /\s+/;
+		shift(@orig);
+		shift(@orig);	
+
+		my @line = split("", $orig[0]);
+
+
 		for (my $i = 0; $i < @line ; $i++){
 			if ( exists $count{$i}){
 				if($line[$i] eq "A" || $line[$i] eq "T" || $line[$i] eq "C" || $line[$i] eq "G"){
@@ -830,10 +841,10 @@ sub admixandpos{
 		$individuals += 1;
 		my @line = split /\s+/;
 
-	#rm headers if they're there
-	for (my $i = 0; $i < 6; $i++){
-		shift(@line);
-	}
+		#rm headers if they're there
+		for (my $i = 0; $i < 6; $i++){
+			shift(@line);
+		}
 
 		#pair each 2 indices after that and delete old line
 		my @newLine;
@@ -892,11 +903,21 @@ sub sourcegeno{
 	
 		#do ops depending on every 2 lines
 		if ($count == 0){
-			@oldLine = split "";
+			my @orig = split /\s+/;
+			shift(@orig);
+			shift(@orig);
+
+			@oldLine = split("", $orig[0]);
 		}
 	
 		if ($count == 1){
-			my @line = split "";
+			my @orig = split /\s+/;
+			shift(@orig);
+			shift(@orig);
+
+			my @line = split("", $orig[0]);
+
+
 			#add new pairs to each SNP
 			for (my $i = 0; $i < @line; $i++){
 				$genoArray[$i] = "$genoArray[$i],$oldLine[$i]$line[$i]";
@@ -963,17 +984,27 @@ sub hapmixrefhaps{
 	# and values as no. of column of SNP that we want in .ped, 
 	#we skip each outline that is not the key/value that we want
 
+#	my $num = keys %crossSNPs;
+#	print "$num\n";
+
 	while (<$HAP>) {
 		chomp;
-		my @line = split "";
-		for (my $i = 0; $i < @line ; $i++){
+
+		my @orig = split /\s+/;
+		shift(@orig);
+		shift(@orig);
+
+		my @line = split("", $orig[0]);
+
+		for (my $i = 0; $i < scalar(@line) ; $i++){
+
 			if (exists $crossSNPs{$i}){
 				if($line[$i] eq "A" || $line[$i] eq "T" || $line[$i] eq "C" || $line[$i] eq "G"){
-					if($line[$i] eq $coding{$i}){
+					#if($line[$i] eq $coding{$i}){
 						print $INTER "0";
-					}else{ 
+					#}else{ 
 						print $INTER "1";
-					}
+					#}
 				}else{
 					print $INTER "?";
 				}
@@ -981,6 +1012,7 @@ sub hapmixrefhaps{
         	}
 		print $INTER "\n";
 	}
+		
 
 	close $INTER;
 	open $INTER, "<$path/$str" or die "error";
@@ -1027,22 +1059,26 @@ sub hapmixadmixgeno{
 	
 	#read in and put admixed SNPs in hash
 	my %admixSNP;
+	my $lc = 0;
 	while (<$SNPS>){
 		chomp;
-        	$admixSNP{$_} = $_;
+        	$admixSNP{$_} = $lc;
+		$lc++;
 	}
 
 	#cross admixed SNPs with those in simu .map 
 	my %crossSNPs;
 	my $pedCol = 0;
+	my %snpPosInHapfile;
 
 	while(<$MAP>){
         	chomp;
         	my @line = split /\s+/;
         	if ($line[3] < $maxPos && $line[3] > $minPos){ #check with rate file
-        	if (exists($admixSNP{$line[1]})){
-			$crossSNPs{$pedCol} = $pedCol;
-               	}
+        		if (exists($admixSNP{$line[1]})){
+				$crossSNPs{$pedCol} = $pedCol;
+				$snpPosInHapfile{$admixSNP{$line[1]}} = $admixSNP{$line[1]};
+               		}
 		}
         	$pedCol++;
 
@@ -1065,8 +1101,9 @@ sub hapmixadmixgeno{
 		for (my $i = 0 ; $i < @line ; $i+=2){
 			if (exists $crossSNPs{$i/2}){
 				if($. == 1){
-					$coding{$i/2} = $line[$i];
-					if ($line[$i] eq $line[$i+1]){
+					$coding{$i/2} = $line[$i]; #this is the line in the admixed data
+					#need another hash for the reference data
+
 						print $INTER "0";
 					}elsif ($line[$i] ne $line[$i+1] && ($line[$i+1] eq "T" || $line[$i+1] eq "C" || $line[$i+1] eq "G" || $line[$i+1] eq "A" )){
 						print $INTER "1";
@@ -1121,7 +1158,7 @@ sub hapmixadmixgeno{
 
 	close $INTER;
 	unlink "$path/AAinterfile.txt" or print "can't delete AA interfile\n";
-	return (\%coding, \%crossSNPs);
+	return (\%coding, \%snpPosInHapfile);
 }
 
 
@@ -1180,11 +1217,11 @@ sub hapmixadmixsnps{
 		my @line = split /\s+/;
 		
 		if ($line[3] < $maxPos && $line[3] > $minPos){
-		if (exists($SNPhash{$line[1]})) {
-		 	print $OUT "\t$line[1]\t$line[0]\t$line[2]\t$line[3]\n";
-			print $OUT1 "\t$line[1]\t$line[0]\t$line[2]\t$line[3]\n";
-			print $OUT2 "\t$line[1]\t$line[0]\t$line[2]\t$line[3]\n";
+			if (exists($SNPhash{$line[1]})) {
+			 	print $OUT "\t$line[1]\t$line[0]\t$line[2]\t$line[3]\n";
+				print $OUT1 "\t$line[1]\t$line[0]\t$line[2]\t$line[3]\n";
+				print $OUT2 "\t$line[1]\t$line[0]\t$line[2]\t$line[3]\n";
+			}
 		}
-		}
-}	
+	}	
 }
