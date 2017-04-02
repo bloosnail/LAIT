@@ -4,7 +4,7 @@
 #Daniel Hui
 #dah124@pitt.edu
 #University of Pittsburgh
-#March 2017
+#April 2017
 ###########################
 
 use strict;
@@ -17,17 +17,17 @@ print "Please be sure .ped has 6 columns of header and .hap has two columns of h
 ###################LAMP##################
 if($software eq "lamp"){
 	if($ARGV[1] eq "2"){ 
-	if ( @ARGV != 5){
+		if ( @ARGV != 5){
         	print "USAGE:: perl lait.pl <lamp> <2> <map> <ped> <output_path>\n";
 		print "There are " . scalar @ARGV . " arguments instead of 5.\n";
         	die;
-	}	
+		}	
 	} elsif ($ARGV[1] eq "3"){ 
-	if ( @ARGV != 8){
-		print "USAGE:: perl lait.pl <lamp> <3> <map> <ped> <freqs_pop1> <freqs_pop2> <freqs_pop3> <output_path>\n";
-	   	print "There are " . scalar @ARGV . " arguments instead of 8.\n";
-		die;
-	}
+		if ( @ARGV != 8){
+			print "USAGE:: perl lait.pl <lamp> <3> <map> <ped> <freqs_pop1> <freqs_pop2> <freqs_pop3> <output_path>\n";
+		   	print "There are " . scalar @ARGV . " arguments instead of 8.\n";
+			die;
+		}
 	} else{
         	print "Sorry, LAIT does not currently support $ARGV[1]-way admixture for LAMP.\n";
         	die;
