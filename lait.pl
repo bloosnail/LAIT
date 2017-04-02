@@ -4,7 +4,7 @@
 #Daniel Hui
 #dah124@pitt.edu
 #University of Pittsburgh
-#April 2017
+#March 2017
 ###########################
 
 use strict;
@@ -17,17 +17,17 @@ print "Please be sure .ped has 6 columns of header and .hap has two columns of h
 ###################LAMP##################
 if($software eq "lamp"){
 	if($ARGV[1] eq "2"){ 
-		if ( @ARGV != 5){
+	if ( @ARGV != 5){
         	print "USAGE:: perl lait.pl <lamp> <2> <map> <ped> <output_path>\n";
 		print "There are " . scalar @ARGV . " arguments instead of 5.\n";
         	die;
-		}	
+	}	
 	} elsif ($ARGV[1] eq "3"){ 
-		if ( @ARGV != 8){
-			print "USAGE:: perl lait.pl <lamp> <3> <map> <ped> <freqs_pop1> <freqs_pop2> <freqs_pop3> <output_path>\n";
-		   	print "There are " . scalar @ARGV . " arguments instead of 8.\n";
-			die;
-		}
+	if ( @ARGV != 8){
+		print "USAGE:: perl lait.pl <lamp> <3> <map> <ped> <freqs_pop1> <freqs_pop2> <freqs_pop3> <output_path>\n";
+	   	print "There are " . scalar @ARGV . " arguments instead of 8.\n";
+		die;
+	}
 	} else{
         	print "Sorry, LAIT does not currently support $ARGV[1]-way admixture for LAMP.\n";
         	die;
@@ -984,9 +984,6 @@ sub hapmixrefhaps{
 	# and values as no. of column of SNP that we want in .ped, 
 	#we skip each outline that is not the key/value that we want
 
-#	my $num = keys %crossSNPs;
-#	print "$num\n";
-
 	while (<$HAP>) {
 		chomp;
 
@@ -1000,11 +997,11 @@ sub hapmixrefhaps{
 
 			if (exists $crossSNPs{$i}){
 				if($line[$i] eq "A" || $line[$i] eq "T" || $line[$i] eq "C" || $line[$i] eq "G"){
-					#if($line[$i] eq $coding{$i}){
+					if($line[$i] eq $coding{$i}){
 						print $INTER "0";
-					#}else{ 
+					}else{ 
 						print $INTER "1";
-					#}
+					}
 				}else{
 					print $INTER "?";
 				}
@@ -1070,18 +1067,19 @@ sub hapmixadmixgeno{
 	my %crossSNPs;
 	my $pedCol = 0;
 	my %snpPosInHapfile;
+	my %AAtoHap;
 
 	while(<$MAP>){
         	chomp;
         	my @line = split /\s+/;
         	if ($line[3] < $maxPos && $line[3] > $minPos){ #check with rate file
-        		if (exists($admixSNP{$line[1]})){
+        		if (exists $admixSNP{$line[1]}){
 				$crossSNPs{$pedCol} = $pedCol;
 				$snpPosInHapfile{$admixSNP{$line[1]}} = $admixSNP{$line[1]};
+				$AAtoHap{$pedCol} = $admixSNP{$line[1]};
                		}
 		}
         	$pedCol++;
-
 	}
 
 	#now that we have hash %crossSNPs w/ keys and 
@@ -1089,6 +1087,8 @@ sub hapmixadmixgeno{
 	#we skip each outline that is not the key/value that we want
 
 	my %coding; #ref/alt allele coding
+	my %refCoding; #coding for reference haps
+
 	while (<$PED>) {        
 		chomp;
 		my @line = split /\s+/;
@@ -1103,7 +1103,9 @@ sub hapmixadmixgeno{
 				if($. == 1){
 					$coding{$i/2} = $line[$i]; #this is the line in the admixed data
 					#need another hash for the reference data
+					$refCoding{$AAtoHap{$i/2}} = $line[$i];
 
+					if($line[$i] eq $line[$i+1]){
 						print $INTER "0";
 					}elsif ($line[$i] ne $line[$i+1] && ($line[$i+1] eq "T" || $line[$i+1] eq "C" || $line[$i+1] eq "G" || $line[$i+1] eq "A" )){
 						print $INTER "1";
@@ -1158,7 +1160,7 @@ sub hapmixadmixgeno{
 
 	close $INTER;
 	unlink "$path/AAinterfile.txt" or print "can't delete AA interfile\n";
-	return (\%coding, \%snpPosInHapfile);
+	return (\%refCoding, \%snpPosInHapfile);
 }
 
 
