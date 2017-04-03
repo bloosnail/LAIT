@@ -4,7 +4,7 @@
 #Daniel Hui
 #dah124@pitt.edu
 #University of Pittsburgh
-#March 2017
+#April 2017
 ###########################
 
 use strict;
@@ -17,17 +17,17 @@ print "Please be sure .ped has 6 columns of header and .hap has two columns of h
 ###################LAMP##################
 if($software eq "lamp"){
 	if($ARGV[1] eq "2"){ 
-	if ( @ARGV != 5){
+		if ( @ARGV != 5){
         	print "USAGE:: perl lait.pl <lamp> <2> <map> <ped> <output_path>\n";
 		print "There are " . scalar @ARGV . " arguments instead of 5.\n";
         	die;
-	}	
+		}	
 	} elsif ($ARGV[1] eq "3"){ 
-	if ( @ARGV != 8){
+		if ( @ARGV != 8){
 		print "USAGE:: perl lait.pl <lamp> <3> <map> <ped> <freqs_pop1> <freqs_pop2> <freqs_pop3> <output_path>\n";
 	   	print "There are " . scalar @ARGV . " arguments instead of 8.\n";
 		die;
-	}
+		}
 	} else{
         	print "Sorry, LAIT does not currently support $ARGV[1]-way admixture for LAMP.\n";
         	die;
@@ -146,21 +146,21 @@ if($software eq "lamp"){
 elsif($software eq "lampld" || $software eq "lamp-ld"){
 	my $path = "$ARGV[-1]";
 	if($ARGV[1] eq "2"){
-        if(@ARGV != 8){
-       		print "USAGE:: perl lait.pl <lampld> <2> <map> <ped> <ref_snps>".
-			" <haps_pop1> <haps_pop2> <output_path>\n";
-	   	print "There are " . scalar @ARGV . " arguments instead of 8.\n";
-            	die;
-        }	
+	        if(@ARGV != 8){
+       			print "USAGE:: perl lait.pl <lampld> <2> <map> <ped> <ref_snps>".
+				" <haps_pop1> <haps_pop2> <output_path>\n";
+		   	print "There are " . scalar @ARGV . " arguments instead of 8.\n";
+       	     		die;
+        	}	
 
 	#3way
        	} elsif($ARGV[1] eq "3"){
-	if(@ARGV != 9){
-      		print "USAGE:: perl lait.pl <lamp-ld> <3> <map> <ped> <snps>". 
-			" <haps_pop1> <haps_pop2> <haps_pop3> <output_path>\n";
-    		print "There are " . scalar @ARGV . " arguments instead of 9.\n";
-          	die;
-        }
+		if(@ARGV != 9){
+      			print "USAGE:: perl lait.pl <lamp-ld> <3> <map> <ped> <snps>". 
+				" <haps_pop1> <haps_pop2> <haps_pop3> <output_path>\n";
+    			print "There are " . scalar @ARGV . " arguments instead of 9.\n";
+          		die;
+        	}
   		print "Creating files...\n";
         } else {
         	print "Sorry, $ARGV[-1]-way admixture is not supported";
@@ -219,7 +219,7 @@ elsif($software eq "elai"){
 		print "You have chosen ELAI for 2way admixed samples.\n";
 	
 		if(@ARGV != 9){
-            		print "USAGE:: perl lait.pl <elai> <2> <map> <ped>". 
+            		print "USAGE:: perl lait.pl <elai> <2> <map> <ped> ". 
 			"<haps_pop1> <snps_pop1> <haps_pop2> <snps_pop2> <output_path>\n";
 	    		print "There are " . scalar @ARGV . " arguments instead of 9.\n";
             		die;
@@ -698,7 +698,6 @@ sub ldhap{
 
 		my @line = split("", $orig[0]);
 
-
 		for (my $i = 0; $i < @line ; $i++){
 			if ( exists $count{$i}){
 				if($line[$i] eq "A" || $line[$i] eq "T" || $line[$i] eq "C" || $line[$i] eq "G"){
@@ -742,24 +741,27 @@ sub ldpos{
 		if( exists $snps{$line[1]} && !exists $subSnps{$line[1]}){
 			print $POS "$line[3]\n";
 			$pc{$mc} = $mc;
-			$subSnps{$line[1]} = $line[1];
+			$subSnps{$line[1]} = $mc;
 		}
 		$mc++;
 	}
 
 	#line counts for hap file
 	seek($SNPS, 0, 0) or die "can't go back: $!";
+
+	my %pc_to_hc;
 	my $sc=0;
 	while (<$SNPS>){
 		chomp;
 		if(exists $subSnps{$_}){
 			$hc{$sc} = $sc;
+			$pc_to_hc{$subSnps{$_}} = $sc;
 		}	
 		$sc++;
 	}
 
 	print "Position file done.\n";		
-	return (\%pc, \%hc);
+	return (\%pc_to_hc, \%hc);
 }
 
 
@@ -767,6 +769,8 @@ sub ldpos{
 sub ldgeno{
 	my ($PED, $GENO, $count_ref) = @_;
 	my %count = %$count_ref;	
+	
+	my %hapCoding; #hash for coding in reference haplotype files
 
 	while (<$PED>){
 		chomp;
@@ -781,6 +785,9 @@ sub ldgeno{
 		for (my $i = 0 ; $i < @line ; $i+=2){
 			if (exists $count{$i/2}){
 				if($. == 1){
+					#hash for hap file
+					$hapCoding{$count{$i/2}} = $line[$i];
+
 					#store ref and alt allele
 					$count{$i/2} = $line[$i];
 
@@ -810,7 +817,7 @@ sub ldgeno{
 		print $GENO "\n"; 
 	}
 	print "Admixed genotype file done.\n";
-	return (\%count);
+	return (\%hapCoding);
 }
 
 
